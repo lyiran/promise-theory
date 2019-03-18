@@ -61,3 +61,61 @@ function resolvePromise(promise2, x, resolve, reject) {
     resolve (x);
   }
 }
+
+// onfulfilled, onrejected 必须异步执行then 方法是异步的
+Promise.prototype.then = function(onfulfilled, onrejected) {
+  let self = this;
+  // 返回新的promise 让当前的then方法执行后可以继续then
+  let promise2 = new Promise(function(resolve, reject) {
+    if (self.status === 'fulfilled') {
+      setTimeout(() => {
+        try {
+          let x = onfulfilled(self.value);
+          resolvePromise(promise2, x, resolve, reject);
+        } catch (e) {
+          reject(e);
+        }
+      })
+    }
+
+    if (self.status === 'rejected') {
+      setTimeout(() => {
+        try {
+          let x = onrejected(self.reason);
+          resolvePromise(promise2, x, resolve, reject);
+        } catch (e) {
+          reject(e);
+        }
+      })
+    }
+
+    if (self.status === 'pending') {
+      self.onResolveCallbacks.push(function() {
+        setTimeout(() => {
+          try {
+            let x = onfulfilled(self.value);
+            resolvePromise(promise2, x, resolve, reject);
+          } catch (e) {
+            reject(e);
+          }
+        })
+      });
+
+      //如果是rejected情况下的异步,则推入rejected回调队列数组中
+      self.onRejectedCallbacks.push(function() {
+        setTimeout(() => {
+          try {
+            let x = onrejected(self.reason);
+            resolvePromise(promise2, x, resolve, reject);
+          } catch (e) {
+            reject(e);
+          }
+        })
+      })
+    }
+  });
+  return promise2;
+}
+
+
+module.exports = Promise
